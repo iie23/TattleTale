@@ -35,8 +35,6 @@ clip = ClipEmbedder()
 
 import cv2
 
-cam = cv2.VideoCapture(0)
-
 import json
 import sys
 import requests
@@ -44,7 +42,7 @@ import base64
 
 def notify(target):
     # Webhooks URL
-    url = "https://hooks.slack.com/services/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"
+    url = "YOUR_SLACK_WEBHOOK_URL_HERE"
      
     # Message you wanna send
     message = (target)
@@ -80,12 +78,14 @@ def notify(target):
 
 import openai
 
-openai.api_key = "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"
+openai.api_key = "YOUR_OPENAI_API_KEY_HERE"
 
+print()
 prompt = input("Security Prompt: ")
+print()
 
 completion = openai.ChatCompletion.create(
-    model = "gpt-3.5-turbo",
+    model = "gpt-4-turbo-preview",
     messages = [
         {"role": "system", "content": "You are WatchDogGPT. Your task is to take in something that the user wants their security system to look out for, and output a numbered list of positive and negative image descriptors for the camera to tell whether or not that thing has occured. For example, if the user says 'Let me know if my baby wakes up', then your positive image descriptors could be 'awake baby' and 'crying baby', while your negative image desciptors could be 'sleeping baby' and 'resting baby'."},
         {"role": "user", "content": prompt}
@@ -116,11 +116,13 @@ for target in targets:
 
 ROBUSTNESS = 5
 
+prev_post = None
 prev_winner = None
 num = 0
+cam = cv2.VideoCapture(0)
 while True:
     _, img = cam.read()
-    #cv2.imshow('Image', img)
+    cv2.imshow('Image', img)
     obs = clip.embed_images(Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB)))[0]
     dots = [torch.dot(obs, embeds[target]) for target in targets]
     winner = targets[dots.index(max(dots))]
@@ -128,10 +130,11 @@ while True:
         num = 1
     else:
         num += 1
-    if num == ROBUSTNESS:
+    if num == ROBUSTNESS and (prev_post is None or prev_post != winner):
         notify(winner)
+        prev_post = winner
     prev_winner = winner
-    #print(winner)
+    print(winner)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 cv2.destroyAllWindows()
